@@ -8,6 +8,7 @@ import SwiftData
 import Foundation
 @Model
 class Task {
+    var order: Int = 0
     //common
     var timestamp: Date
     var title: String
