@@ -7,8 +7,21 @@
 import SwiftUI
 struct TaskDetailView: View {
     let task: Task
+    let categoryConfig: CategoryConfig
+    
+    init(task: Task){
+        self.task = task
+        self.categoryConfig = CategoryConfig.from(task.category)
+    }
 
-    var categoryConfig: CategoryConfig { CategoryConfig.from(task.category) }
+//    var categoryConfig: (icon: String, color: Color, label: String) {
+//        switch task.category {
+//        case .work:     return ("briefcase.fill",         Color(hex: "4A90E2"), "Work")
+//        case .personal: return ("person.crop.circle.fill", Color(hex: "F5A623"), "Personal")
+//        case .home:     return ("house.fill",             Color(hex: "7ED321"), "Home")
+//        case .other:    return ("tag.fill",               Color(hex: "E24A4A"), "Other")
+//        }
+//    }
 
     var body: some View {
         ZStack {
@@ -122,7 +135,7 @@ struct TaskDetailView: View {
         .navigationTitle(task.title)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color(hex: "0F0F1A"), for: .navigationBar)
+        //.toolbarBackground(Color(hex: "0F0F1A"), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         #endif
     }
@@ -156,4 +169,9 @@ struct TaskDetailView: View {
                 .foregroundStyle(valueColor)
         }
     }
+}
+
+#Preview {
+    let task = Task(timestamp: .now, title: "Morning Run", task_description: "5km around the park", category: .personal, startTime: .now)
+    TaskDetailView(task: task)
 }

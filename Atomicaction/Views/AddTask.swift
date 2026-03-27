@@ -193,15 +193,51 @@ struct AddItemView: View {
                         sectionHeader("Due Date")
                     }
 
+//                    // MARK: - Category
+//                    Section {
+//                        Picker("Category", selection: $selectedCategory) {
+//                            ForEach(Category.allCases, id: \.self) { category in
+//                                Text(category.rawValue.capitalized)
+//                                    .tag(category)
+//                            }
+//                        }
+//                        .pickerStyle(.palette)
+//                        .listRowBackground(
+//                            RoundedRectangle(cornerRadius: 10)
+//                                .fill(Color(hex: "0F0F1A"))
+//                                .overlay(
+//                                    RoundedRectangle(cornerRadius: 10)
+//                                        .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+//                                )
+//                        )
+//                    } header: {
+//                        sectionHeader("Category")
+//                    }
                     // MARK: - Category
                     Section {
-                        Picker("Category", selection: $selectedCategory) {
+                        HStack(spacing: 8) {
                             ForEach(Category.allCases, id: \.self) { category in
-                                Text(category.rawValue.capitalized)
-                                    .tag(category)
+                                let config = CategoryConfig.from(category)
+                                let isSelected = selectedCategory == category
+                                Button { selectedCategory = category } label: {
+                                    Text(category.rawValue.capitalized)
+                                        .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                                        .foregroundStyle(isSelected ? .white : .white.opacity(0.4))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 8)
+                                        .background(isSelected ? config.color.opacity(0.3) : config.color.opacity(0.08))
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .strokeBorder(
+                                                    isSelected ? config.color.opacity(0.8) : config.color.opacity(0.2),
+                                                    lineWidth: isSelected ? 1 : 0.5
+                                                )
+                                        )
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
-                        .pickerStyle(.palette)
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(Color(hex: "0F0F1A"))
@@ -210,9 +246,7 @@ struct AddItemView: View {
                                         .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
                                 )
                         )
-                    } header: {
-                        sectionHeader("Category")
-                    }
+                    } header: { sectionHeader("Category") }
                 }
                 .scrollContentBackground(.hidden)
                 .preferredColorScheme(.dark)
