@@ -12,7 +12,7 @@ import SwiftData
 struct AtomicactionApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Task.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -25,7 +25,19 @@ struct AtomicactionApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // ContentView()
+//            EclipseView(
+//                taskTitle: "Design Review",
+//                taskDescription: "Go through the latest mockups with the team and collect feedback on the new onboarding flow before Thursday's deadline.",
+//                taskCategory: .work
+//            )
+            
+//            TaskListView()
+//                .modelContainer(makePreviewContainer())
+            
+            //TaskListView()
+                //.modelContainer(makePreviewContainer())
+            MainScreen()
         }
         .modelContainer(sharedModelContainer)
     }
