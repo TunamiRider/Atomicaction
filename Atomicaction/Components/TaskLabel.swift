@@ -7,15 +7,17 @@
 import SwiftUI
 import SwiftData
 struct TaskLabel: View {
-    let timestamp: Date
-    let title: String
-    let category: Category
-    let task_description: String
-    let dueDate: Date?
+//    let timestamp: Date
+//    let title: String
+//    let category: Category
+//    let task_description: String
+//    let dueDate: Date?
+//    let isCompleted: Bool
+    let task: Task
     var isEditing: Bool = false
 
     var categoryConfig: (icon: String, color: Color, label: String) {
-        switch category {
+        switch task.category {
         case .work:     return ("briefcase.fill",        Color(hex: "4A90E2"), "Work")
         case .personal: return ("person.crop.circle.fill", Color(hex: "F5A623"), "Personal")
         case .home:     return ("house.fill",            Color(hex: "7ED321"), "Home")
@@ -28,7 +30,7 @@ struct TaskLabel: View {
 //    }
 
     var clippedDescription: String {
-        let trimmed = task_description.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = task.task_description.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count > 40 else { return trimmed }
         return String(trimmed.prefix(40)) + "…"
     }
@@ -41,9 +43,17 @@ struct TaskLabel: View {
                 .frame(width: 3)
 
             VStack(alignment: .leading, spacing: 4) {
+                                
                 // Title row
                 HStack(spacing: 6) {
-                    Text(title)
+                    // Routine indicator (only if routine)
+                    if task.isRoutine {
+                        Image(systemName: "repeat.circle")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.yellow.opacity(0.8))  // Or categoryConfig.color
+                    }
+                    
+                    Text(task.title)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
@@ -75,13 +85,13 @@ struct TaskLabel: View {
                 // Footer: date + optional due date
                 HStack(spacing: 8) {
                     Label(
-                        timestamp.formatted(.dateTime.month(.abbreviated).day()),
+                        task.timestamp.formatted(.dateTime.month(.abbreviated).day()),
                         systemImage: "calendar"
                     )
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.4))
 
-                    if let due = dueDate {
+                    if let due = task.dueDate {
                         Label(
                             due.formatted(.dateTime.month(.abbreviated).day()),
                             systemImage: "clock"
@@ -95,7 +105,7 @@ struct TaskLabel: View {
         .padding(.vertical, 12)
         .padding(.trailing, 14)
         .padding(.leading, 10)
-        .background(isEditing ? Color(hex: "252540") : Color(hex: "1C1C2E"))
+        .background(AppGlobals.labelColor(isEditing: isEditing, isCompleted: task.isCompleted))
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)

@@ -150,6 +150,7 @@ struct EditTaskView: View {
                                 task.task_description = description
                                 task.category         = selectedCategory
                                 task.dueDate          = dueDate
+                                task.updateDueDateRank()
                                 dismiss()
                             }
                         } label: {

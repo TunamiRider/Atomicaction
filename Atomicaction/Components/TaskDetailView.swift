@@ -8,6 +8,16 @@ import SwiftUI
 struct TaskDetailView: View {
     let task: Task
     let categoryConfig: CategoryConfig
+    @State var isShowingEdit: Bool = false
+    
+    private var routineTime: String {
+        guard let date = task.scheduledAt else { return "" }
+        return date.formatted(date: .omitted, time: .shortened).lowercased()
+    }
+    private var routineMinutes: String {
+        guard let minutes = task.durationMinutes else { return "0 min" }
+        return "\(minutes) min"
+    }
     
     init(task: Task){
         self.task = task
@@ -33,6 +43,11 @@ struct TaskDetailView: View {
                     // MARK: - Header card
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
+                            if task.isRoutine {
+                                Image(systemName: "repeat.circle")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(.yellow.opacity(0.8))  // Or categoryConfig.color
+                            }
                             // Category pill
                             HStack(spacing: 6) {
                                 Image(systemName: categoryConfig.icon)
@@ -47,6 +62,21 @@ struct TaskDetailView: View {
                             .clipShape(Capsule())
 
                             Spacer()
+                            
+                            // "Add Task" button
+                            Button(action: { isShowingEdit.toggle() }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "pencil")
+                                    Text("Edit Task")
+                                }
+                                .font(.system(size: 12))
+                                .foregroundStyle(.white.opacity(0.95))
+
+                            }
+                            .sheet(isPresented: $isShowingEdit) {
+                                EditTaskView(task: task)
+                                    .presentationDetents([.large])
+                            }
 
                             // Timestamp
                             Text(task.timestamp.formatted(.dateTime.month(.abbreviated).day().year()))
@@ -112,14 +142,36 @@ struct TaskDetailView: View {
                             )
                         }
 
-                        Divider().overlay(.white.opacity(0.06))
-
-                        metaRow(
-                            icon: "checkmark.circle",
-                            label: "Status",
-                            value: task.isCompleted ? "Completed" : "Pending",
-                            valueColor: task.isCompleted ? Color(hex: "7ED321") : .white.opacity(0.75)
-                        )
+                        if task.isRoutine == false {
+                            Divider().overlay(.white.opacity(0.06))
+                            
+                            metaRow(
+                                icon: "checkmark.circle",
+                                label: "Status",
+                                value: task.isCompleted ? "Completed" : "Pending",
+                                valueColor: task.isCompleted ? Color(hex: "7ED321") : .white.opacity(0.75)
+                            )
+                        }
+                        
+                        if task.isRoutine == true {
+                            Divider().overlay(.white.opacity(0.06))
+                            metaRow(
+                                icon: "repeat.circle",
+                                label: "Scheduled At",
+                                value: routineTime,
+                                valueColor: .white.opacity(0.75)
+                            )
+                            
+                            Divider().overlay(.white.opacity(0.06))
+                            metaRow(
+                                icon: "repeat.circle",
+                                label: "Duration",
+                                value: routineMinutes,
+                                valueColor: .white.opacity(0.75)
+                            )
+                            
+                        }
+                        
                     }
                     .padding(16)
                     .background(Color(hex: "1C1C2E"))
@@ -128,9 +180,12 @@ struct TaskDetailView: View {
                         RoundedRectangle(cornerRadius: 14)
                             .strokeBorder(.white.opacity(0.07), lineWidth: 0.5)
                     )
+                    
                 }
                 .padding(16)
+                
             }
+            
         }
         .navigationTitle(task.title)
         #if os(iOS)
@@ -172,6 +227,6 @@ struct TaskDetailView: View {
 }
 
 #Preview {
-    let task = Task(timestamp: .now, title: "Morning Run", task_description: "5km around the park", category: .personal, startTime: .now)
+    let task = Task(timestamp: .now, title: "Morning Run", task_description: "5km around the park", isRoutine: true, category: .personal, scheduledAt: .now, durationMinutes: 10)
     TaskDetailView(task: task)
 }
