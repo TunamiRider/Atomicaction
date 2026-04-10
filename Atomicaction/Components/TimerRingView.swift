@@ -83,18 +83,22 @@ import SwiftData
 
 struct TimerRingView: View {
     //let taskId: PersistentIdentifier?
-    let scheduledAt: Date?
-    let durationMinutes: Int?
+    let task: Task?
+    //let scheduledAt: Date?
+    //let durationMinutes: Int?
     let glowPulse: Bool
     let size: CGFloat
 
     @State private var progress: Double = 1.0
+    
+    var scheduledAt: Date? { task?.scheduledAt }
+    var durationMinutes: Int? { task?.durationMinutes }
 
     private let tickCount = 60
     private let strokeWidth: CGFloat = 3.5
     private let tickLength: CGFloat = 8
     @Binding  var isButtonPressed: Bool
-    let onTimerComplete: ()->Void
+    let onTimerComplete: (Task?)->Void
 
     private func computeProgress() -> Double {
         guard let scheduled = scheduledAt,
@@ -166,16 +170,27 @@ struct TimerRingView: View {
         .onAppear {
             progress = computeProgress()
         }
-        .onChange(of: scheduledAt) { _, _ in
+        .onChange(of: scheduledAt) { old, new in
+            print("📅 scheduledAt changed: \(old?.description ?? "nil") → \(new?.description ?? "nil")")
+            
             progress = 1.0  // snap to full immediately
+            
         }
-        .onChange(of: durationMinutes) { _, _ in
+        .onChange(of: durationMinutes) { old, new in
+            print("⏳ durationMinutes changed: \(String(describing: old)) → \(String(describing: new))")
+            
             progress = 1.0
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
-            progress = computeProgress()
-            if progress <= 0 {
-                onTimerComplete()
+            let newProgress = computeProgress()
+            
+            let wasAboveZero = progress > 0 // ← snapshot before update
+            
+            progress = newProgress
+            
+            if newProgress <= 0 && wasAboveZero  {// ← only fires on the transition
+                print("⏱ timer hit zero, firing onTimerComplete")
+                onTimerComplete(task)
             }
         }
         //test

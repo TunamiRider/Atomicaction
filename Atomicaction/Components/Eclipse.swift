@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+internal import Combine
 // MARK: - Animation Phase
 
 enum EclipsePhase {
@@ -15,9 +16,44 @@ struct EclipseView: View {
     // ── SwiftData ────────────────────────────────────────────────────
     @Query(filter: #Predicate {$0.isCompleted == false}, sort: \Task.order) private var tasks: [Task]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
  
     // Convenience: first task from the sorted list
-    private var firstTask: Task? { tasks.first }
+    private var firstTask: Task? { prioritizedTasks.first }
+    
+    private var prioritizedTasks: [Task] {
+        let now = Date.now
+        
+        return tasks.sorted{ a, b in
+            let aIsActive = isActiveRoutine(a, at: now)
+            let bIsActive = isActiveRoutine(b, at: now)
+            
+            //Active routine always wins
+            if aIsActive != bIsActive { return aIsActive }
+            
+            if aIsActive && bIsActive {
+                let aEnd = endTime(a)
+                let bEnd = endTime(b)
+                if let aEnd, let bEnd { return aEnd < bEnd }
+            }
+            
+            return a.order < b.order
+        }
+    }
+    private func isActiveRoutine(_ task: Task, at now: Date) -> Bool {
+        guard task.isRoutine,
+              let scheduled = task.scheduledAt,
+              let duration = task.durationMinutes else { return false }
+        let end = scheduled.addingTimeInterval(Double(duration) * 60)
+        
+        return scheduled <= now && now <= end
+    }
+    private func endTime(_ task: Task) -> Date? {
+        guard let scheduled = task.scheduledAt,
+              let duration = task.durationMinutes else { return nil }
+        
+        return scheduled.addingTimeInterval(Double(duration) * 60)
+    }
 
     // Task data
     //var taskTitle: String = ""
@@ -41,6 +77,8 @@ struct EclipseView: View {
     
     @State private var timerProgress: Double = 1.0
     @State private var countdownTimer: Timer? = nil
+    
+    @State private var now:Date = .now
 
     var body: some View {
         GeometryReader { geo in
@@ -191,19 +229,17 @@ struct EclipseView: View {
                     .opacity(moonScale > 0.1 ? 1.0 : 0.0)
 
                 // ── Timer ring (just outside moon) ──────────────────────────
-//                TimerRingView(
-//                    progress: timerProgress,
-//                    glowPulse: glowPulse,
-//                    size: 300 * s      // slightly larger than the 273pt moon disc
-//                )
+                let currentTask = firstTask
                 TimerRingView(
-                    // taskId: firstTask?.id,
-                    scheduledAt: firstTask?.scheduledAt,
-                    durationMinutes: firstTask?.durationMinutes,
+                    task: currentTask,
+                    //scheduledAt: firstTask?.scheduledAt,
+                    //durationMinutes: firstTask?.durationMinutes,
                     glowPulse: glowPulse,
                     size: 300 * s,
                     isButtonPressed: $isButtonPressed,
-                    onTimerComplete: { startSequence() }
+                    onTimerComplete: { completedTask in
+                            startSequence(completing: completedTask)
+                    }
                 )
                 .opacity(moonScale > 0.3 ? moonScale : 0)  // fades with moon during animation
                 
@@ -235,29 +271,29 @@ struct EclipseView: View {
                     .opacity(moonScale > 0.3 ? moonScale : 0)
 
                 // ── Label ────────────────────────────────────────────────
-                VStack {
-                    Spacer()
-                    Text("TOTAL SOLAR ECLIPSE")
-                        .font(.system(size: 13 * s, weight: .semibold, design: .monospaced))
-                        .tracking(5)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 1.0, green: 0.8, blue: 0.4),
-                                    Color(red: 0.9, green: 0.5, blue: 0.15)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .opacity(0.75)
-                        .padding(.bottom, 52 * s)
-                }
+//                VStack {
+//                    Spacer()
+//                    Text("TOTAL SOLAR ECLIPSE")
+//                        .font(.system(size: 13 * s, weight: .semibold, design: .monospaced))
+//                        .tracking(5)
+//                        .foregroundStyle(
+//                            LinearGradient(
+//                                colors: [
+//                                    Color(red: 1.0, green: 0.8, blue: 0.4),
+//                                    Color(red: 0.9, green: 0.5, blue: 0.15)
+//                                ],
+//                                startPoint: .leading,
+//                                endPoint: .trailing
+//                            )
+//                        )
+//                        .opacity(0.75)
+//                        .padding(.bottom, 52 * s)
+//                }
 
                 // ── Tap button ───────────────────────────────────────────
                 VStack {
                     Button(action:{
-                        startSequence()
+                        startSequence(completing: currentTask)
                     }) {
                         Text(isButtonPressed ? "ANIMATING" : "TAP TO ANIMATE")
                             .font(.system(size: 11 * s, weight: .medium, design: .monospaced))
@@ -275,10 +311,83 @@ struct EclipseView: View {
                     .padding(.top, 60 * s)
                     Spacer()
                 }
+                
+                // ── Time info ────────────────────────────────────────────────
+                VStack {
+                    Spacer()
+                    // ── Timer Dispaly ────────────────────────────────────────────────
+                    if currentTask != nil {
+//                        let scheduledAt = firstTask?.scheduledAt,
+//                           let duration = firstTask?.durationMinutes
+                        HStack(spacing: 16) {
+                            // Scheduled time
+                            VStack(spacing: 2) {
+                                Text("scheduled")
+                                    .font(.system(size: 9 * s, weight: .medium, design: .monospaced))
+                                    .tracking(2)
+                                    .foregroundColor(Color(red: 1.0, green: 0.8, blue: 0.4).opacity(0.5))
+                                Text(currentTask?.isRoutine == true
+                                     ? (currentTask?.scheduledAt.map { $0.formatted(date: .omitted, time: .shortened).lowercased() } ?? "-")
+                                     : "-")
+                                    .font(.system(size: 14 * s, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(Color(red: 1.0, green: 0.8, blue: 0.4).opacity(0.85))
+                            }
+
+                            // Divider dot
+                            Circle()
+                                .fill(Color(red: 1.0, green: 0.6, blue: 0.1).opacity(0.4))
+                                .frame(width: 3 * s, height: 3 * s)
+
+                            // Remaining time
+                            VStack(spacing: 2) {
+                                Text("remaining")
+                                    .font(.system(size: 9 * s, weight: .medium, design: .monospaced))
+                                    .tracking(2)
+                                    .foregroundColor(Color(red: 1.0, green: 0.8, blue: 0.4).opacity(0.5))
+                                Text({
+                                    if let task = currentTask,
+                                       task.isRoutine,
+                                        let scheduledAt = task.scheduledAt,
+                                        let duration = task.durationMinutes {
+                                        return remainingText(scheduledAt: scheduledAt, duration: duration, now: now)
+                                    }
+                                    return "-"
+                                }())
+                                    .font(.system(size: 14 * s, weight: .semibold, design: .monospaced))
+                                    .foregroundColor(Color(red: 1.0, green: 0.8, blue: 0.4).opacity(0.85))
+                            }
+                        }
+                        .padding(.horizontal, 20 * s)
+                        .padding(.vertical, 10 * s)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20 * s)
+                                .stroke(Color(red: 1.0, green: 0.6, blue: 0.1).opacity(0.25), lineWidth: 1)
+                        )
+                        .padding(.bottom, 24 * s)
+                    }
+                    // ── Label ────────────────────────────────────────────────
+                    Text("TOTAL SOLAR ECLIPSE")
+                        .font(.system(size: 13 * s, weight: .semibold, design: .monospaced))
+                        .tracking(5)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [
+                                    Color(red: 1.0, green: 0.8, blue: 0.4),
+                                    Color(red: 0.9, green: 0.5, blue: 0.15)
+                                ],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .opacity(0.75)
+                        .padding(.bottom, 52 * s)
+                }
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .onAppear {
+            resetRoutineTasks()
+            
             withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
                 glowPulse = true
             }
@@ -290,17 +399,39 @@ struct EclipseView: View {
             }
             //startCountdown()
         }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()){ _ in
+            now = .now
+        }
         .onChange(of: firstTask?.id){_, _ in
             timerProgress = 1.0
                 //startCountdown()
+        }
+        .onChange(of: scenePhase){_, newPhase in
+            if newPhase == .active {
+                resetRoutineTasks()
+            }
         }
     }
 
     // MARK: - Animation Sequence
 
-    func startSequence() {
+    func startSequence(completing taskToComplete2: Task? = nil) {
         guard phase == .idle else { return }
+//        print("🌑 startSequence fired")
+//        print("🌑 firstTask at start: \(firstTask?.title ?? "nil")")
+//        print("🌑 all tasks count: \(tasks.count)")
+//        tasks.forEach { print("   - \($0.title) | completed: \($0.isCompleted) | scheduledAt: \($0.scheduledAt?.description ?? "nil")") }
+        
+        
+        // let taskToComplete = firstTask
+//        print("🌑 taskToComplete snapshot: \(taskToComplete?.title ?? "nil")")
+        
 
+        
+//        print("🌑 firstTask AFTER save: \(firstTask?.title ?? "nil")")
+//        print("🌑 tasks AFTER save:")
+//        tasks.forEach { print("   - \($0.title) | completed: \($0.isCompleted)") }
+        
         withAnimation(.easeOut(duration: 0.3)) {
             buttonOpacity = 0
         }
@@ -321,11 +452,23 @@ struct EclipseView: View {
                 withAnimation(.easeInOut(duration: 0.5)) { sunBloom = 1.0 }
             }
             isButtonPressed = true
+
         }
+
 
         // ── Phase 3: Moon grows back (3.4s → 5.6s) ──────────────────
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.4) {
             phase = .returning
+            
+            // ← complete the SNAPSHOT, not whatever firstTask is now
+            if let task = taskToComplete2 {
+//                task.isCompleted = true
+//                task.updateCompletionRank()
+                task.markCompleted()
+                try? modelContext.save()
+                print("✅ saved: \(task.title) as completed")
+            }
+            
             withAnimation(.easeInOut(duration: 2.2)) {
                 moonScale  = 1.0
                 sunOpacity = 0.0
@@ -378,6 +521,29 @@ struct EclipseView: View {
             if timerProgress <= 0 { countdownTimer?.invalidate() }
         }
     }
+    
+    private func remainingText(scheduledAt: Date, duration: Int, now:Date = .now) -> String {
+        let end = scheduledAt.addingTimeInterval(Double(duration) * 60)
+        let remaining = end.timeIntervalSinceNow
+        //let remaining = end.timeIntervalSince(now)
+
+        if remaining <= 0 { return "done" }
+
+        let totalMinutes = Int(remaining / 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
+        }
+    }
+    
+    private func resetRoutineTasks(){
+        tasks.forEach{ $0.resetIfNeeded(resetHour: 18) }
+        try? modelContext.save()
+    }
 }
 
 // MARK: - Moon Disc
@@ -386,6 +552,7 @@ struct MoonDisc: View {
     let task: Task?
     let modelContext: ModelContext
     @Binding var isButtonPressed: Bool
+    
 
     var title: String {
         task?.title ?? ""
@@ -541,12 +708,12 @@ struct MoonDisc: View {
         .shadow(color: Color(red: 1.0, green: 0.3, blue: 0.0).opacity(0.25), radius: 70)
         .onChange(of: isButtonPressed){_, newIsButtonPressed in
             if !newIsButtonPressed { return }
-            
-            if let task2 = task {
-                task2.isCompleted = true
-                task2.updateCompletionRank()
-                try? modelContext.save()
-            }
+//            
+//            if let task2 = task {
+//                task2.isCompleted = true
+//                task2.updateCompletionRank()
+//                try? modelContext.save()
+//            }
             
         }
     }
@@ -619,5 +786,5 @@ struct StarFieldView: View {
 //        taskDescription: "Go through the latest mockups with the team and collect feedback on the new onboarding flow before Thursday's deadline.",
 //        taskCategory: .home
 //    )
-    EclipseView().modelContainer(makePreviewContainer())
+    EclipseView().modelContainer(makePreviewContainer2())
 }

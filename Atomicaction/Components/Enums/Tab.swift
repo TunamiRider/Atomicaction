@@ -13,8 +13,8 @@ enum Tab: Int, CaseIterable, Identifiable {
     var image: String {
         switch self {
         case .home: return "house"
-        case .list: return "clock.fill"
-        case .slot: return "gear"
+        case .list: return "list.bullet.rectangle"
+        case .slot: return "calendar.day.timeline.left"
         }
     }
     
@@ -22,7 +22,7 @@ enum Tab: Int, CaseIterable, Identifiable {
         switch self {
         case .home: return "Home"
         case .list: return "Tasks"
-        case .slot: return "Settings"
+        case .slot: return "Routines"
         }
     }
     
