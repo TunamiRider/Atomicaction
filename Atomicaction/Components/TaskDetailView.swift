@@ -45,7 +45,6 @@ struct TaskDetailView: View {
                         HStack {
                             if task.isRoutine {
                                 Image(systemName: "repeat.circle")
-                                    .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(.yellow.opacity(0.8))  // Or categoryConfig.color
                             }
                             // Category pill
