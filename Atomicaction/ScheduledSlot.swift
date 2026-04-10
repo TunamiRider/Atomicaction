@@ -82,7 +82,7 @@ struct TimeSlotPickerView: View {
     @Binding var selectedSlot: TimeSlot?
     @Binding var selectedDuration: Int  // in minutes, multiples of 10
 
-    private let slotHeight: CGFloat = 20
+    private let slotHeight: CGFloat = 25
     private let hourLabelWidth: CGFloat = 48
     private let hours = Array(5...21)  // 7am - 9pm
 
@@ -92,7 +92,7 @@ struct TimeSlotPickerView: View {
             guard let scheduled = task.scheduledAt,
                   let duration = task.durationMinutes else { continue }
             let slots = TimeSlot.from(scheduled).occupiedSlots(durationMinutes: duration, title: task.title)
-            //slots.indices.first.map{ slots[$0].title = task.title }
+
             slots.forEach { set.insert($0) }
         }
         return set
@@ -122,8 +122,8 @@ struct TimeSlotPickerView: View {
                 VStack(alignment: .trailing, spacing: 0) {
                     ForEach(hours, id: \.self) { hour in
                         Text(hourLabel(hour))
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .foregroundColor(.secondary)
+                            .font(AppConsts.appFont16)
+                            .foregroundColor(.white.opacity(0.8))
                             .frame(height: slotHeight * 6)  // 6 ten-min slots per hour
                             .frame(width: hourLabelWidth, alignment: .trailing)
                             .padding(.trailing, 8)
@@ -141,7 +141,8 @@ struct TimeSlotPickerView: View {
                                 isOccupied: isOccupied(slot),
                                 isSelected: isSelected(slot),
                                 hasConflict: hasConflict(for: slot),
-                                isHourBoundary: minute == 0
+                                isHourBoundary: minute == 0,
+                                slotHeight: slotHeight
                             )
                             .onTapGesture {
                                 if !isOccupied(slot) {
@@ -172,55 +173,64 @@ struct SlotCell: View {
     let isSelected: Bool
     let hasConflict: Bool
     let isHourBoundary: Bool
+    let slotHeight: CGFloat
+    
 
     var body: some View {
         ZStack(alignment: .leading) {
             Rectangle()
                 .fill(backgroundColor)
-                .frame(height: 20)
+                .frame(height: slotHeight)
                 .overlay(alignment: .top) {
 
                     if isHourBoundary {
                         Rectangle()
-                            .fill(Color.primary.opacity(0.15))
+                            .fill(Color.white.opacity(0.7))
                             .frame(height: 0.5)
                     } else {
                         Rectangle()
-                            .fill(Color.primary.opacity(0.06))
+                            .fill(Color.white.opacity(0.4))
                             .frame(height: 0.5)
                     }
                 }
 
             if isOccupied && !isSelected {
                 Rectangle()
-                    .fill(Color.orange.opacity(0.35))
+                    .fill(Color.orange.opacity(0.55))
                     .padding(.horizontal, 4)
-                    .frame(height: 18)
+                    .frame(height: slotHeight - 2)
                     .cornerRadius(2)
             }
 
             if isSelected {
                 Rectangle()
-                    .fill(hasConflict ? Color.red.opacity(0.5) : Color.blue.opacity(0.35))
+                    .fill(hasConflict ? Color.red.opacity(0.65) : Color(hex: "#3d8ef0").opacity(0.55))
                     .padding(.horizontal, 4)
-                    .frame(height: 18)
+                    .frame(height: slotHeight - 2)
                     .cornerRadius(2)
             }
             // ── Title on first slot ──────────────────────────────────
             if let title = slot.title {
                 Text(title)
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .foregroundColor(.primary.opacity(0.75))
+                    .font(AppConsts.appFont16)
+                    .foregroundColor(.white)
                     .lineLimit(1)
                     .padding(.horizontal, 8)
             }
         }
     }
 
+//    private var backgroundColor: Color {
+//        if hasConflict { return Color.red.opacity(0.08) }
+//        if isSelected { return Color.blue.opacity(0.08) }
+//        if isOccupied { return Color.orange.opacity(0.08) }
+//        return Color.clear
+//    }
+    // In SlotCell — backgroundColor
     private var backgroundColor: Color {
-        if hasConflict { return Color.red.opacity(0.08) }
-        if isSelected { return Color.blue.opacity(0.08) }
-        if isOccupied { return Color.orange.opacity(0.08) }
+        if hasConflict { return Color.red.opacity(0.15) }
+        if isSelected  { return Color(hex: "#1a2a3a") }   // deep blue tint
+        if isOccupied  { return Color(hex: "#2a1f0f") }   // deep amber tint
         return Color.clear
     }
 }
@@ -233,15 +243,16 @@ struct DurationStepperView: View {
     var body: some View {
         HStack(spacing: 12) {
             Text("duration")
-                .font(.system(size: 13, weight: .medium, design: .monospaced))
-                .foregroundColor(.secondary)
+                .font(AppConsts.appFont16)
+                .foregroundColor(.white)
 
             Button(action: { if duration > 10 { duration -= 10 } }) {
                 Image(systemName: "minus.circle")
             }
 
             Text("\(duration) min")
-                .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                .font(AppConsts.appFont16)
+                .foregroundColor(.white)
                 .frame(minWidth: 64)
 
             Button(action: { if duration < 180 { duration += 10 } }) {
@@ -262,12 +273,13 @@ struct ScheduleTaskSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Binding var selectedSlot: TimeSlot?
     @Binding var selectedDuration: Int
+    @State var showAddRoutine: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
             DurationStepperView(duration: $selectedDuration)
 
-            Divider()
+            Divider().overlay(Color.white.opacity(0.12))
 
             TimeSlotPickerView(
                 existingTasks: tasks2,
@@ -279,17 +291,43 @@ struct ScheduleTaskSheet: View {
                 Divider()
                 HStack {
                     Text("\(slot.displayString) · \(selectedDuration) min")
-                        .font(.system(size: 13, design: .monospaced))
-                        .foregroundColor(.secondary)
+                        .font(AppConsts.appFont14)
+                        .foregroundColor(.white)
                     Spacer()
                     Text(occupiedConflict ? "conflict" : "available")
-                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .font(AppConsts.appFont12)
                         .foregroundColor(occupiedConflict ? .red : .green)
+                    
+                    Button(action: {
+                        showAddRoutine = true
+                    }) {
+                        HStack {
+                            Text("Add Routine")
+                                .font(AppConsts.appFont12)
+                        }
+                        .foregroundStyle(occupiedConflict ? .red : .green)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(occupiedConflict ? Color.red.opacity(0.1) : Color.green.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(occupiedConflict ? Color.red.opacity(0.3) : Color.green.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    }.disabled(occupiedConflict)
+                
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 28)
                 .padding(.vertical, 10)
             }
         }
+        .background(Color(hex: "#111214"))
+        .sheet(isPresented: $showAddRoutine){
+            AddRoutine(scheduledAt: selectedSlot?.toDate() ?? .now, durationMinutes: selectedDuration).presentationDetents([.large])
+        }
+
     }
     private func hasConflict(newStart: TimeSlot, newDuration: Int, existingTasks: [Task]) -> Bool {
         let newSlots = Set(newStart.occupiedSlots(durationMinutes: newDuration))
@@ -327,13 +365,13 @@ func makePreviewContainer2() -> ModelContainer {
     
     let fivePM=Calendar.current.date(bySettingHour: 17, minute: 10, second: 0, of: Date())!
     let sampleTasks = [
-        Task(timestamp: .now, title: "Evening Meditation2", task_description: "15 minutes mindfulness session2",isRoutine: true, category: .other, isCompleted: false, dueDate: fivePM, scheduledAt: fivePM, durationMinutes: 20),
+        Task(timestamp: .now, title: "Evening Meditation2", task_description: "15 minutes mindfulness session2",isRoutine: false, category: .other, isCompleted: false, dueDate: fivePM, scheduledAt: fivePM, durationMinutes: 20),
         
         Task(timestamp: .now, title: "Morning Run", task_description: "5km around the park", isRoutine: true, category: .personal, isCompleted: true, dueDate: tomorrow, scheduledAt: fourPM, durationMinutes: 30),
         
         Task(timestamp: .now, title: "Buy Groceries", task_description: "Milk, eggs, bread, and fruits", isRoutine: true, category: .home, isCompleted: true, dueDate: tomorrow, scheduledAt: fourPMandThirdtymin, durationMinutes: 30),
         
-//        Task(timestamp: .now, title: "Team Meeting", task_description: "Weekly sync with the dev team", isRoutine: true, category: .work, dueDate: yesterday, scheduledAt: sixtyMinuteFromNow, durationMinutes: 30),
+        Task(timestamp: .now, title: "Team Meeting", task_description: "Weekly sync with the dev team", isRoutine: false, category: .work, dueDate: yesterday),
         
     ]
     
@@ -351,7 +389,7 @@ func makePreviewContainer2() -> ModelContainer {
         //tasks: mockTasks,
         selectedSlot: $selectedSlot,
         selectedDuration: $selectedDuration
-    ).modelContainer(makePreviewContainer2())
+    ).modelContainer(makePreviewContainer())
     
 //    struct PreviewWrapper: View {
 //        @State private var selectedSlot: TimeSlot? = nil
