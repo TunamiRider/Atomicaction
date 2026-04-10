@@ -19,7 +19,7 @@ struct MainScreen: View {
             }
             .ignoresSafeArea(edges: .bottom)
         }
-        //.background(AppConsts.spaceblack)
+        .background(AppConsts.spaceblack)
         //.frame(maxWidth: .infinity, maxHeight: .infinity)
 
     }
