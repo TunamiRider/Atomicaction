@@ -11,13 +11,17 @@ struct TaskListView: View {
     @State private var selectedSortType: SortType = .order
 
     var body: some View {
-            TaskListContentView(sortType: selectedSortType, selectedSortType: $selectedSortType)
+
+        TaskListContentView(sortType: selectedSortType, selectedSortType: $selectedSortType)
+
+
+
     }
 }
 struct TaskListContentView: View {
     let sortType: SortType
     @Binding var selectedSortType: SortType
-    @State var selectedFilterType: FilterType = .none
+    @State var selectedFilterType: FilterType = .all
     var selectedSortTypeStr: String {
         sortType.rawValue
     }
@@ -28,9 +32,11 @@ struct TaskListContentView: View {
     @State private var editMode: EditMode = .inactive
     @State private var showingAddSheet = false
     private var visibleTasks: [Task] {
-        if selectedFilterType == .none { return tasks }
+        if selectedFilterType == .all { return tasks }
         
         if selectedFilterType == .showOnlyCompleted { return tasks.filter{ $0.isCompleted } }
+        
+        if selectedFilterType == .showOnlyRoutine { return tasks.filter{ $0.isRoutine } }
         
         return tasks.filter{ !$0.isCompleted }
     }
@@ -162,7 +168,7 @@ struct TaskListContentView: View {
                     }
                 }
                 .sheet(isPresented: $showingAddSheet) {
-                    AddItemView()
+                    AddTaskView()
                         .presentationDetents([.large])
                 }
                 .scrollContentBackground(.hidden)
@@ -251,20 +257,23 @@ func makePreviewContainer() -> ModelContainer {
     let container = try! ModelContainer(for: Task.self, configurations: config)
     let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: .now)!
     let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: .now)!
-    let oneMinuteFromNow = Date.now.addingTimeInterval(60 * 10)
+    let now = Date.now
+    let date2 = now.addingTimeInterval(60 * 2)
     let sampleTasks = [
-        Task(timestamp: .now, title: "Morning Run", task_description: "5km around the park", isRoutine: true, category: .personal, dueDate: yesterday, scheduledAt: .now, durationMinutes: 30),
+        Task(timestamp: .now, title: "Morning Run", task_description: "5km around the park", isRoutine: true, category: .personal, dueDate: nil, scheduledAt: now, durationMinutes: 2),
+        Task(timestamp: .now, title: "Team Meeting", task_description: "Weekly sync with the dev team", isRoutine: true, category: .work, dueDate: nil, scheduledAt: date2, durationMinutes: 2),
+        
         
         Task(timestamp: .now, title: "Buy Groceries", task_description: "Milk, eggs, bread, and fruits", category: .home, isCompleted: true, dueDate: tomorrow),
         
-        Task(timestamp: .now, title: "Team Meeting", task_description: "Weekly sync with the dev team", isRoutine: true, category: .work, dueDate: yesterday, scheduledAt: oneMinuteFromNow, durationMinutes: 10),
+
         
         Task(timestamp: .now, title: "Read Book", task_description: "Finish chapter 4 of Swift Programming", category: .work),
         Task(timestamp: .now, title: "Evening Meditation", task_description: "15 minutes mindfulness session", category: .other, isCompleted: true, scheduledAt: Calendar.current.date(byAdding: .hour, value: 8, to: .now)),
         
         Task(timestamp: .now, title: "Evening Meditation2", task_description: "15 minutes mindfulness session2", category: .other, isCompleted: false, dueDate: Calendar.current.date(byAdding: .day, value: -8, to: .now)!, scheduledAt: Calendar.current.date(byAdding: .day, value: -8, to: .now)!),
         
-        Task(timestamp: .now, title: "Run 15 mins", task_description: "Weekly sync with the dev team", isRoutine: true, category: .work, scheduledAt: Date(), durationMinutes: 15),
+//        Task(timestamp: .now, title: "Run 15 mins", task_description: "Weekly sync with the dev team", isRoutine: true, category: .work, scheduledAt: Date(), durationMinutes: 15),
     ]
     
     for (index, task) in sampleTasks.enumerated() {
@@ -277,5 +286,5 @@ func makePreviewContainer() -> ModelContainer {
 
 #Preview {
     TaskListView()
-        .modelContainer(makePreviewContainer2())
+        .modelContainer(makePreviewContainer())
 }

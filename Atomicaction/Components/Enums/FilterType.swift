@@ -6,7 +6,8 @@
 //
 
 enum FilterType: String, CaseIterable, Codable {
-    case none = "none"
+    case all = "all"
     case showOnlyCompleted = "show_only_completed"
+    case showOnlyRoutine = "show_only_routine"
     
 }

@@ -113,7 +113,7 @@ import SwiftData
 //    }
 //}
 
-struct AddItemView: View {
+struct AddTaskView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -192,27 +192,6 @@ struct AddItemView: View {
                     } header: {
                         sectionHeader("Due Date")
                     }
-
-//                    // MARK: - Category
-//                    Section {
-//                        Picker("Category", selection: $selectedCategory) {
-//                            ForEach(Category.allCases, id: \.self) { category in
-//                                Text(category.rawValue.capitalized)
-//                                    .tag(category)
-//                            }
-//                        }
-//                        .pickerStyle(.palette)
-//                        .listRowBackground(
-//                            RoundedRectangle(cornerRadius: 10)
-//                                .fill(Color(hex: "0F0F1A"))
-//                                .overlay(
-//                                    RoundedRectangle(cornerRadius: 10)
-//                                        .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
-//                                )
-//                        )
-//                    } header: {
-//                        sectionHeader("Category")
-//                    }
                     // MARK: - Category
                     Section {
                         HStack(spacing: 8) {
@@ -317,7 +296,7 @@ struct AddItemView: View {
 }
 
 #Preview {
-    AddItemView()
+    AddTaskView()
         .modelContainer(for: Task.self, inMemory: true)
     
 }
